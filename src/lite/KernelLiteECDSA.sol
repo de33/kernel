@@ -6,7 +6,7 @@ import {ECDSA} from "solady/utils/ECDSA.sol";
 import {Kernel} from "../Kernel.sol";
 import {IKernelValidator} from "../interfaces/IKernelValidator.sol";
 import {ValidationData} from "../common/Types.sol";
-import {SIG_VALIDATION_FAILED, KERNEL_STORAGE_SLOT_1} from "../common/Constants.sol";
+import {SIG_VALIDATION_FAILED, KERNEL_STORAGE_SLOT_1, KERNEL_MSG_TYPEHASH} from "../common/Constants.sol";
 import {ExecutionDetail} from "../common/Structs.sol";
 import {packValidationData} from "../common/Types.sol";
 import {_intersectValidationData} from "../utils/KernelHelper.sol";
@@ -64,7 +64,8 @@ contract KernelLiteECDSA is Kernel {
         override
         returns (ValidationData)
     {
-        address signed = ECDSA.recover(ECDSA.toEthSignedMessageHash(_hash), _signature);
+        bytes32 messageHash = getMessageHashForKernel(abi.encode(_hash));
+        address signed = ECDSA.recover(ECDSA.toEthSignedMessageHash(messageHash), _signature);
         if (signed == getKernelLiteECDSAStorage().owner) {
             return ValidationData.wrap(0);
         }
@@ -78,4 +79,14 @@ contract KernelLiteECDSA is Kernel {
     function setDefaultValidator(IKernelValidator, bytes calldata) external payable override onlyFromEntryPointOrSelf {
         revert("not implemented");
     }
+
+    function encodeMessageDataForKernel(bytes memory message) internal view returns (bytes memory ret) {
+        bytes32 kernelMessageHash = keccak256(abi.encode(KERNEL_MSG_TYPEHASH, keccak256(message)));
+        return abi.encodePacked(bytes1(0x19), bytes1(0x01), _domainSeparator(), kernelMessageHash);
+    }
+
+    function getMessageHashForKernel(bytes memory message) internal view returns (bytes32) {
+        return keccak256(encodeMessageDataForKernel(message));
+    }
+
 }

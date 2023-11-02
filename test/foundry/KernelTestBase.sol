@@ -14,8 +14,10 @@ import {IKernelValidator} from "src/interfaces/IKernelValidator.sol";
 
 import {Call, ExecutionDetail} from "src/common/Structs.sol";
 import {ValidationData, ValidUntil, ValidAfter} from "src/common/Types.sol";
+import {KERNEL_NAME, KERNEL_VERSION} from "src/common/Constants.sol";
 
 import {ERC4337Utils} from "test/foundry/utils/ERC4337Utils.sol";
+import {EIP712Utils} from "test/foundry/utils/EIP712Utils.sol";
 import {Test} from "forge-std/Test.sol";
 import {console} from "forge-std/Console.sol";
 import {TestValidator} from "./mock/TestValidator.sol";
@@ -178,8 +180,11 @@ abstract contract KernelTestBase is Test {
 
     function test_validate_signature() external {
         bytes32 hash = keccak256(abi.encodePacked("hello world"));
-        bytes memory sig = signHash(hash);
+        bytes32 messageHash = EIP712Utils.getMessageHashForKernel(abi.encodePacked(hash), kernel);
+        bytes memory sig = signHash(messageHash);
         assertEq(kernel.isValidSignature(hash, sig), Kernel.isValidSignature.selector);
+        Kernel kernel2 = Kernel(payable(factory.createAccount(address(kernelImpl), getInitializeData(), 3)));
+        assertEq(kernel2.isValidSignature(hash, sig), bytes4(0xffffffff));
     }
 
     function test_fail_validate_wrongsignature() external {
@@ -411,7 +416,8 @@ abstract contract KernelTestBase is Test {
         require(address(executionDetail.validator) != address(0), "execution detail not set");
         bytes memory enableData = getEnableData();
         bytes32 digest = getTypedDataHash(selector, validAfter, validUntil, address(validator), executor, enableData);
-        bytes memory enableSig = signHash(digest);
+        bytes32 messageHash = EIP712Utils.getMessageHashForKernel(abi.encodePacked(digest), kernel);
+        bytes memory enableSig = signHash(messageHash);
         sig = getValidatorSignature(op);
         sig = abi.encodePacked(
             bytes4(0x00000002),
@@ -471,8 +477,8 @@ abstract contract KernelTestBase is Test {
         return keccak256(
             abi.encodePacked(
                 "\x19\x01",
-                ERC4337Utils._buildDomainSeparator("Kernel", "0.2.2", address(kernel)),
-                ERC4337Utils.getStructHash(sig, validUntil, validAfter, validator, executor, enableData)
+                EIP712Utils._buildDomainSeparator(KERNEL_NAME, KERNEL_VERSION, address(kernel)),
+                EIP712Utils.getStructHash(sig, validUntil, validAfter, validator, executor, enableData)
             )
         );
     }

@@ -5,8 +5,9 @@ pragma solidity ^0.8.0;
 import {UserOperation} from "I4337/interfaces/UserOperation.sol";
 import {ECDSA} from "solady/utils/ECDSA.sol";
 import {IKernelValidator} from "../interfaces/IKernelValidator.sol";
+import {IKernel} from "../interfaces/IKernel.sol";
 import {ValidationData} from "../common/Types.sol";
-import {SIG_VALIDATION_FAILED} from "../common/Constants.sol";
+import {SIG_VALIDATION_FAILED, KERNEL_NAME, KERNEL_VERSION, KERNEL_MSG_TYPEHASH} from "../common/Constants.sol";
 
 struct ECDSAValidatorStorage {
     address owner;
@@ -45,11 +46,12 @@ contract ECDSAValidator is IKernelValidator {
     }
 
     function validateSignature(bytes32 hash, bytes calldata signature) public view override returns (ValidationData) {
+        bytes32 messageHash = getMessageHashForKernel(abi.encode(hash));
         address owner = ecdsaValidatorStorage[msg.sender].owner;
-        if (owner == ECDSA.recover(hash, signature)) {
+        if (owner == ECDSA.recover(messageHash, signature)) {
             return ValidationData.wrap(0);
         }
-        bytes32 ethHash = ECDSA.toEthSignedMessageHash(hash);
+        bytes32 ethHash = ECDSA.toEthSignedMessageHash(messageHash);
         address recovered = ECDSA.recover(ethHash, signature);
         if (owner != recovered) {
             return SIG_VALIDATION_FAILED;
@@ -60,4 +62,14 @@ contract ECDSAValidator is IKernelValidator {
     function validCaller(address _caller, bytes calldata) external view override returns (bool) {
         return ecdsaValidatorStorage[msg.sender].owner == _caller;
     }
+
+    function encodeMessageDataForKernel(bytes memory message) internal view returns (bytes memory) {
+        bytes32 kernelMessageHash = keccak256(abi.encode(KERNEL_MSG_TYPEHASH, keccak256(message)));
+        return abi.encodePacked(bytes1(0x19), bytes1(0x01), IKernel(msg.sender).domainSeparator(), kernelMessageHash);
+    }
+
+    function getMessageHashForKernel(bytes memory message) internal view returns (bytes32) {
+        return keccak256(encodeMessageDataForKernel(message));
+    }
 }
+

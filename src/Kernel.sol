@@ -14,7 +14,7 @@ import {IKernelValidator} from "./interfaces/IKernelValidator.sol";
 import {
     KERNEL_NAME,
     KERNEL_VERSION,
-    VALIDATOR_APPROVED_STRUCT_HASH,
+    VALIDATOR_APPROVED_TYPEHASH,
     KERNEL_STORAGE_SLOT_1,
     SIG_VALIDATION_FAILED
 } from "./common/Constants.sol";
@@ -35,6 +35,10 @@ contract Kernel is EIP712, Compatibility, KernelStorage {
 
     function _domainNameAndVersion() internal pure override returns (string memory, string memory) {
         return (name, version);
+    }
+
+    function domainSeparator() external view returns (bytes32) {
+        return _domainSeparator();
     }
 
     /// @notice Accepts incoming Ether transactions and calls from the EntryPoint contract
@@ -205,7 +209,7 @@ contract Kernel is EIP712, Compatibility, KernelStorage {
             bytes32 enableDigest = _hashTypedData(
                 keccak256(
                     abi.encode(
-                        VALIDATOR_APPROVED_STRUCT_HASH,
+                        VALIDATOR_APPROVED_TYPEHASH,
                         bytes4(sig),
                         uint256(bytes32(signature[4:36])),
                         address(bytes20(signature[36:56])),

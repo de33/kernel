@@ -21,6 +21,8 @@ import "src/validator/SessionKeyValidator.sol";
 import {KernelECDSATest} from "../KernelECDSA.t.sol";
 import "../mock/TestCallee.sol";
 
+import "../utils/EIP712Utils.sol";
+
 using ERC4337Utils for IEntryPoint;
 
 contract SessionKeyValidatorTest is KernelECDSATest {
@@ -140,7 +142,8 @@ contract SessionKeyValidatorTest is KernelECDSATest {
             address(0),
             enableData
         );
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerKey, digest);
+        bytes32 messageHash = EIP712Utils.getMessageHashForKernel(abi.encodePacked(digest), kernel);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerKey, messageHash);
         op.signature = abi.encodePacked(
             bytes4(0x00000002),
             uint48(ValidAfter.unwrap(sessionData.validAfter)),

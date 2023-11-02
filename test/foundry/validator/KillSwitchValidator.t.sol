@@ -9,6 +9,7 @@ import "src/executor/KillSwitchAction.sol";
 // test utils
 import "forge-std/Test.sol";
 import "../utils/ERC4337Utils.sol";
+import "../utils/EIP712Utils.sol";
 import {KernelTestBase} from "../KernelTestBase.sol";
 import {KernelECDSATest} from "../KernelECDSA.t.sol";
 
@@ -83,7 +84,9 @@ contract KillSwitchValidatorTest is KernelECDSATest {
             bytes32 digest = getTypedDataHash(
                 KillSwitchAction.toggleKillSwitch.selector, 0, 0, address(killSwitch), address(action), enableData
             );
-            (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerKey, digest);
+            bytes32 messageHash = EIP712Utils.getMessageHashForKernel(abi.encodePacked(digest), kernel);
+
+            (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerKey, messageHash);
 
             op.signature = abi.encodePacked(
                 bytes4(0x00000002),

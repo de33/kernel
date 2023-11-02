@@ -90,4 +90,6 @@ interface IKernel {
         external
         payable
         returns (ValidationData validationData);
+
+    function domainSeparator() external view returns (bytes32);
 }

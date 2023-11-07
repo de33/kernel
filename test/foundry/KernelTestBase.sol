@@ -178,7 +178,7 @@ abstract contract KernelTestBase is Test {
 
     function test_validate_signature() external {
         bytes32 hash = keccak256(abi.encodePacked("hello world"));
-        bytes memory sig = signHash(hash);
+        bytes memory sig = signHash(_toERC1271Hash(hash, kernel));
         assertEq(kernel.isValidSignature(hash, sig), Kernel.isValidSignature.selector);
     }
 
@@ -407,11 +407,11 @@ abstract contract KernelTestBase is Test {
         uint48 validUntil,
         IKernelValidator validator,
         address executor
-    ) internal view returns (bytes memory sig) {
+    ) internal returns (bytes memory sig) {
         require(address(executionDetail.validator) != address(0), "execution detail not set");
         bytes memory enableData = getEnableData();
         bytes32 digest = getTypedDataHash(selector, validAfter, validUntil, address(validator), executor, enableData);
-        bytes memory enableSig = signHash(digest);
+        bytes memory enableSig = signHash(_toERC1271Hash(digest, kernel));
         sig = getValidatorSignature(op);
         sig = abi.encodePacked(
             bytes4(0x00000002),
@@ -475,5 +475,19 @@ abstract contract KernelTestBase is Test {
                 ERC4337Utils.getStructHash(sig, validUntil, validAfter, validator, executor, enableData)
             )
         );
+    }
+
+    function _toERC1271Hash(bytes32 structHash, Kernel kernelI) public returns (bytes32) {
+        vm.prank(address(kernelI));
+        bytes32 domainSeparator = ERC4337Utils._buildDomainSeparator("Kernel", "0.2.2", address(kernelI));
+        bytes32 digest;
+        assembly {
+            mstore(0x00, 0x1901000000000000)
+            mstore(0x1a, domainSeparator)
+            mstore(0x3a, structHash)
+            digest := keccak256(0x18, 0x42)
+            mstore(0x3a, 0)
+        }
+        return digest;
     }
 }

@@ -83,7 +83,7 @@ contract KillSwitchValidatorTest is KernelECDSATest {
             bytes32 digest = getTypedDataHash(
                 KillSwitchAction.toggleKillSwitch.selector, 0, 0, address(killSwitch), address(action), enableData
             );
-            (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerKey, digest);
+            (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerKey, _toERC1271Hash(digest, kernel));
 
             op.signature = abi.encodePacked(
                 bytes4(0x00000002),

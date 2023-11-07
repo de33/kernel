@@ -101,7 +101,7 @@ contract SessionKeyValidatorTest is KernelECDSATest {
         uint8 usingPaymasterMode,
         bool param1Faulty,
         bool param2Faulty
-    ) internal view returns (UserOperation memory op) {
+    ) internal returns (UserOperation memory op) {
         op = entryPoint.fillUserOp(
             address(kernel),
             abi.encodeWithSelector(
@@ -140,7 +140,7 @@ contract SessionKeyValidatorTest is KernelECDSATest {
             address(0),
             enableData
         );
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerKey, digest);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(ownerKey, _toERC1271Hash(digest, kernel));
         op.signature = abi.encodePacked(
             bytes4(0x00000002),
             uint48(ValidAfter.unwrap(sessionData.validAfter)),

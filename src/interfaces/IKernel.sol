@@ -27,6 +27,10 @@ interface IKernel {
 
     error DeprecatedOperation();
 
+    function name() external view returns (string memory);
+
+    function version() external view returns (string memory);
+
     function initialize(IKernelValidator _validator, bytes calldata _data) external payable;
 
     function upgradeTo(address _newImplementation) external payable;
@@ -90,6 +94,4 @@ interface IKernel {
         external
         payable
         returns (ValidationData validationData);
-
-    function domainNameAndVersion() external pure returns (string memory, string memory);
 }

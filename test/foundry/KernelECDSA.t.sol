@@ -86,6 +86,28 @@ contract KernelECDSATest is KernelTestBase {
         assertEq(owner, address(0xdeadbeef), "owner should be 0xdeadbeef");
     }
 
+    function test_isValidSignature() external {
+        Kernel kernel2 = Kernel(payable(address(factory.createAccount(address(kernelImpl), getInitializeData(), 2))));
+        assertNotEq(address(kernel), address(kernel2), "kernels should not be equal");
+        bytes32 hash = keccak256("HelloWorld");
+        bytes memory signature = signHash(_toERC1271Hash(hash, kernel));
+        bytes4 value = kernel.isValidSignature(hash, signature);
+        bytes4 value2 = kernel2.isValidSignature(hash, signature);
+        assertNotEq(value, value2, "value should not be equal");
+
+        vm.prank(address(kernel));
+        bytes32 domainSeparator = ECDSAValidator(address(defaultValidator)).DOMAIN_SEPARATOR();
+        vm.prank(address(kernel));
+        bytes32 hashStruct = ECDSAValidator(address(defaultValidator)).hashTypedData(hash);
+
+        vm.prank(address(kernel2));
+        bytes32 domainSeparator2 = ECDSAValidator(address(defaultValidator)).DOMAIN_SEPARATOR();
+        vm.prank(address(kernel2));
+        bytes32 hashStruct2 = ECDSAValidator(address(defaultValidator)).hashTypedData(hash);
+        assertNotEq(domainSeparator, domainSeparator2, "domain separator should be different");
+        assertNotEq(hashStruct, hashStruct2, "hash struct should be different");
+    }
+
     function test_default_validator_disable() external override {
         UserOperation memory op = entryPoint.fillUserOp(
             address(kernel),

@@ -1,6 +1,7 @@
 pragma solidity ^0.8.0;
 
 import {IEntryPoint} from "I4337/interfaces/IEntryPoint.sol";
+import {SignatureCheckerLib} from "solady/utils/SignatureCheckerLib.sol";
 import {UserOperation} from "I4337/interfaces/UserOperation.sol";
 import {ECDSA} from "solady/utils/ECDSA.sol";
 import {Kernel} from "../Kernel.sol";
@@ -64,11 +65,15 @@ contract KernelLiteECDSA is Kernel {
         override
         returns (ValidationData)
     {
-        address signed = ECDSA.recover(ECDSA.toEthSignedMessageHash(_hash), _signature);
-        if (signed == getKernelLiteECDSAStorage().owner) {
+        bytes32 wrappedHash = hashTypedData(_hash);
+        address owner = getKernelLiteECDSAStorage().owner;
+        bool isValid = SignatureCheckerLib.isValidSignatureNow(owner, wrappedHash, _signature) ||
+            SignatureCheckerLib.isValidSignatureNow(owner, SignatureCheckerLib.toEthSignedMessageHash(wrappedHash), _signature);
+        if (isValid) {
             return ValidationData.wrap(0);
+        } else {
+            return SIG_VALIDATION_FAILED;
         }
-        return SIG_VALIDATION_FAILED;
     }
 
     function _validCaller(address _caller, bytes calldata) internal view override returns (bool) {
@@ -77,5 +82,42 @@ contract KernelLiteECDSA is Kernel {
 
     function setDefaultValidator(IKernelValidator, bytes calldata) external payable override onlyFromEntryPointOrSelf {
         revert("not implemented");
+    }
+
+    function hashTypedData(bytes32 structHash) public view returns (bytes32 digest) {
+        digest = _domainSeparator();
+        assembly {
+            // Compute the digest.
+            mstore(0x00, 0x1901000000000000) // Store "\x19\x01".
+            mstore(0x1a, digest) // Store the domain separator.
+            mstore(0x3a, structHash) // Store the struct hash.
+            digest := keccak256(0x18, 0x42)
+            // Restore the part of the free memory slot that was overwritten.
+            mstore(0x3a, 0)
+        }
+    }
+
+    function DOMAIN_SEPARATOR() external view returns (bytes32) {
+        return _domainSeparator();
+    }
+
+    function _domainSeparator() internal view override returns (bytes32 separator) {
+        bytes32 versionHash;
+        (string memory name, string memory version) = _domainNameAndVersion();
+        separator = keccak256(bytes(name));
+        versionHash = keccak256(bytes(version));
+        assembly {
+            let m := mload(0x40)
+            mstore(m, _DOMAIN_TYPEHASH)
+            mstore(add(m, 0x20), separator)
+            mstore(add(m, 0x40), versionHash)
+            mstore(add(m, 0x60), chainid())
+            mstore(add(m, 0x80), address())
+            separator := keccak256(m, 0xa0)
+        }
+    }
+
+    function _domainNameAndVersionMayChange() internal pure override returns (bool) {
+        return true;
     }
 }

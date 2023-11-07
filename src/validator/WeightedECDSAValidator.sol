@@ -180,8 +180,4 @@ contract WeightedECDSAValidator is EIP712, IKernelValidator {
     function validateSignature(bytes32 hash, bytes calldata signature) external view returns (ValidationData) {
         return SIG_VALIDATION_FAILED;
     }
-
-    function isValidSignature(bytes32 hash, bytes memory signature) external pure returns (bytes4 result) {
-         revert NotImplemented();
-    }
 }

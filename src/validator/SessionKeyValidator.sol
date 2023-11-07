@@ -292,4 +292,8 @@ contract SessionKeyValidator is IKernelValidator {
     function validateSignature(bytes32, bytes calldata) external pure returns (ValidationData) {
         revert NotImplemented();
     }
+
+    function isValidSignature(bytes32 hash, bytes memory signature) external pure returns (bytes4 result) {
+         revert NotImplemented();
+    }
 }

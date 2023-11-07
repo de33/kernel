@@ -45,6 +45,10 @@ contract ERC165SessionKeyValidator is IKernelValidator {
         revert NotImplemented();
     }
 
+    function isValidSignature(bytes32 hash, bytes memory signature) external pure returns (bytes4 result) {
+         revert NotImplemented();
+    }
+
     function validateUserOp(UserOperation calldata _userOp, bytes32 _userOpHash, uint256)
         external
         payable

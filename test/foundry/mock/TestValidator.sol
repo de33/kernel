@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import "src/interfaces/IKernel.sol";
 import "src/interfaces/IKernelValidator.sol";
+import {ERC1271} from "solady/accounts/ERC1271.sol";
 import "src/common/Types.sol";
 import "src/utils/KernelHelper.sol";
 import "src/common/Constants.sol";
 
-contract TestValidator is IKernelValidator {
+contract TestValidator is IKernelValidator, ERC1271 {
     event TestValidateUserOp(bytes32 indexed opHash);
     event TestEnable(bytes data);
     event TestDisable(bytes data);
@@ -51,5 +53,17 @@ contract TestValidator is IKernelValidator {
 
     function validCaller(address _caller, bytes calldata) external view override returns (bool) {
         return _caller == caller[msg.sender];
+    }
+
+    function _erc1271Signer() internal view override virtual returns (address) {
+        return caller[msg.sender];
+    }
+
+    function _domainNameAndVersion() internal view override returns (string memory, string memory) {
+        IKernel(msg.sender).domainNameAndVersion();
+    }
+
+    function isValidSignature(bytes32 hash, bytes calldata signature) public view override(ERC1271, IKernelValidator) returns (bytes4 result) {
+        return ERC1271.isValidSignature(hash, signature);
     }
 }

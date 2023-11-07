@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 // Importing external libraries and contracts
+import {ERC1271} from "solady/accounts/ERC1271.sol";
 import {EIP712} from "solady/utils/EIP712.sol";
 import {ECDSA} from "solady/utils/ECDSA.sol";
 import {IEntryPoint} from "I4337/interfaces/IEntryPoint.sol";
@@ -10,7 +11,7 @@ import {Compatibility} from "./abstract/Compatibility.sol";
 import {KernelStorage} from "./abstract/KernelStorage.sol";
 import {_intersectValidationData} from "./utils/KernelHelper.sol";
 import {IKernelValidator} from "./interfaces/IKernelValidator.sol";
-
+import {IKernel} from "./interfaces/IKernel.sol";
 import {
     KERNEL_NAME,
     KERNEL_VERSION,
@@ -33,7 +34,11 @@ contract Kernel is EIP712, Compatibility, KernelStorage {
     /// @dev Sets up the EIP712 and KernelStorage with the provided entry point
     constructor(IEntryPoint _entryPoint) KernelStorage(_entryPoint) {}
 
-    function _domainNameAndVersion() internal pure override returns (string memory, string memory) {
+    function domainNameAndVersion() external pure returns (string memory, string memory) {
+        return (name, version);
+    }
+
+    function _domainNameAndVersion() internal pure override(EIP712) returns (string memory, string memory) {
         return (name, version);
     }
 
@@ -256,8 +261,11 @@ contract Kernel is EIP712, Compatibility, KernelStorage {
         if (result != address(0)) {
             return 0xffffffff;
         }
-
-        return 0x1626ba7e;
+        address validator;
+        assembly {
+            validator := shr(80, sload(KERNEL_STORAGE_SLOT_1))
+        }
+        return IKernelValidator(validator).isValidSignature(hash, signature);
     }
 
     function _checkCaller() internal view returns (bool) {

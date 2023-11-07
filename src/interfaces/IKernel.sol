@@ -90,4 +90,6 @@ interface IKernel {
         external
         payable
         returns (ValidationData validationData);
+
+    function domainNameAndVersion() external pure returns (string memory, string memory);
 }

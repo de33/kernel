@@ -40,11 +40,11 @@ contract Kernel is EIP712, Compatibility, KernelStorage {
     /// @notice Accepts incoming Ether transactions and calls from the EntryPoint contract
     /// @dev This function will delegate any call to the appropriate executor based on the function signature.
     fallback() external payable {
+        if (msg.sender != address(entryPoint)) {
+            if (!_checkCaller()) revert NotAuthorizedCaller();
+        }
         bytes4 sig = msg.sig;
         address executor = getKernelStorage().execution[sig].executor;
-        if (msg.sender != address(entryPoint) && !_checkCaller()) {
-            revert NotAuthorizedCaller();
-        }
         assembly {
             calldatacopy(0, 0, calldatasize())
             let result := delegatecall(gas(), executor, 0, calldatasize(), 0, 0)
